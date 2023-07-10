@@ -13,6 +13,7 @@ app.use(cors())
 
 // Route to sign a PDF from a URL
 app.get('/sign-pdf', async (req, res) => {
+
   
   try {
     const pdfUrl = req.query.pdfUrl;
@@ -29,55 +30,33 @@ app.get('/sign-pdf', async (req, res) => {
     // Generate a digital signature using the private key
     const signature = generateSignature(pdfBuffer, privateKey);
 
-
-    //code to convert signature to a hash using a hashing function
-      const hash = convertToHash(signature);
-    
-       pdfDoc.setSubject(hash);
+    // Sign the PDF using the signature
+    const { x, y, width, height } = pdfDoc.getPage(0).getMediaBox();
+    const signatureAppearance = {
+      x: x + width / 2,
+      y: y + height / 4,
+      width: width / 2,
+      height: height / 4,
+      name: "Signature"
+    };
+    // pdfDoc.attach("OBEN DESMOND ASHU THEOLA")
+    const page = pdfDoc.addPage();
+    // page.drawText(signature, { x: 135, y: 415 })
+    page.get(signature, signatureAppearance);
+    // page.addSignature(signature, signatureAppearance);
+   
 
     // Return the signed PDF as a binary response
     const signedPdfBuffer = await pdfDoc.save();
-    
-    
+    res.set('Content-Type', 'application/pdf');
+    console.log("signed buffer", signedPdfBuffer)
     const url = await uploadSignedPdf(signedPdfBuffer, 'files/teola-file.pdf')
-    res.send({url:url??"no url found", hash});
+    res.send({url:url??"no url found"});
   } catch (error) {
     console.error("error heyyy",error);
     res.status(500).send('Internal server error');
   }
 });
-
-// Route to sign a PDF from a URL
-app.get('/get-hash', async (req, res) => {
-  
-  try {
-    const pdfUrl = req.query.pdfUrl;
-
-    console.log('downloading...')
-    // Download the PDF from the URL
-    const pdfBuffer = await downloadPdf(pdfUrl);
-
-    console.log('downloaded')
-    // Load the PDF into pdf-lib
-    const pdfDoc = await pdfLib.PDFDocument.load(pdfBuffer);
-
-    const hash = pdfDoc.getSubject()
-
-    res.send({hash})
-
-  }catch(err){
-    res.status(500).send(err)
-  }
-
-})
-
-
-function convertToHash(signature) {
-  const hashFunction = 'sha256'; // Choose the hashing function to use
-  const hash = crypto.createHash(hashFunction);
-  hash.update(signature);
-  return hash.digest('hex');
-}
 
 // Helper function to download a PDF from a URL
 function downloadPdf(pdfUrl) {
