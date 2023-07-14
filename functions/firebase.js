@@ -33,7 +33,15 @@ async function registerUser(email, password, profileData) {
     // Return the user ID
     return userId;
   } catch (error) {
-    console.error("Error registering user: ", error);
+    // console.error("Error registering user: ", error);
+    if (error.code === "auth/email-already-exists") {
+      // Handle the case when a user with the same email already exists
+      console.error("Error: Email already exists");
+      return { error: "Email already exists" };
+    } else {
+      // Handle other errors
+      console.error("Unexpected error: ", error);
+    }
     return null;
   }
 }
@@ -45,16 +53,17 @@ async function authenticateUser(email, password) {
     const userRecord = await auth.getUserByEmail(email);
     const userId = userRecord.uid;
     const token = await auth.createCustomToken(userId);
-    const signInResult = await auth.signInWithCustomToken(token);
+    // const signInResult = await auth.signInWithCustomToken(token);
 
     // Get the user profile data from Firestore
     const userProfileRef = await db.collection("users").doc(userId).get();
-    const userProfileData = userProfileRef.data();
+    let userProfileData = userProfileRef.data();
+    userProfileData.id = userId
 
     // Return the access token and user profile data
-    const accessToken = signInResult.user.getIdToken();
+    // const accessToken = signInResult.user.getIdToken();
     return {
-      accessToken: accessToken,
+      accessToken: token,
       userProfileData: userProfileData,
     };
   } catch (error) {
@@ -114,6 +123,19 @@ async function deleteDocument(collectionName, documentId) {
   }
 }
 
+// Define a middleware function to authenticate Firebase Authentication tokens
+async function authenticateToken(req, res, next) {
+  try {
+    const authToken = req.headers.authorization.split(" ")[1];
+    const decodedToken = await auth.verifyIdToken(authToken);
+    req.user = decodedToken;
+    next();
+  } catch (error) {
+    console.error("Error authenticating token: ", error);
+    res.status(401).json({ error: "Unauthorized" });
+  }
+}
+
 // Export the utility functions
 module.exports = {
   registerUser,
@@ -122,4 +144,5 @@ module.exports = {
   readDocument,
   updateDocument,
   deleteDocument,
+  authenticateToken,
 };

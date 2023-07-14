@@ -1,5 +1,5 @@
 const express = require("express");
-const { registerUser, authenticateUser } = require("../functions/firebase");
+const { registerUser, authenticateUser, authenticateToken } = require("../functions/firebase");
 const router = express.Router();
 const bodyParser = require("body-parser");
 
@@ -11,6 +11,9 @@ router.post("/register", async (req, res) => {
   const { email, password, profileData } = req.body;
   const userId = await registerUser(email, password, profileData);
   if (userId) {
+    if(userId.error){
+      return res.status(400).json(userId)
+    }
     res.status(201).json({ userId });
   } else {
     res.status(400).json({ error: "Error registering user" });
@@ -29,10 +32,9 @@ router.post("/login", async (req, res) => {
 });
 
 // Get user data
-router.get("/users/:userId", async (req, res) => {
+router.get("/data/:userId", authenticateToken, async (req, res) => {
   const userId = req.params.userId;
-  const userProfileRef = await db.collection("users").doc(userId).get();
-  const userProfileData = userProfileRef.data();
+  const userProfileRef = await readDocument('users', userId);
   if (userProfileData) {
     res.status(200).json(userProfileData);
   } else {
