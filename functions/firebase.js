@@ -48,17 +48,25 @@ async function registerUser(email, password, profileData) {
 
 // Authenticate a user with the specified email and password
 async function authenticateUser(email, password) {
+  console.log("=====> Loggin In");
   try {
     // Authenticate the user in Firebase Authentication
-    const userRecord = await auth.getUserByEmail(email);
-    const userId = userRecord.uid;
-    const token = await auth.createCustomToken(userId);
+    // Authenticate the user in Firebase Authentication
+    const signInResult = await auth.getUserByEmail(email);
+    const userId = signInResult.uid;
+
+    console.log(signInResult);
+    console.log(userId)
     // const signInResult = await auth.signInWithCustomToken(token);
 
     // Get the user profile data from Firestore
     const userProfileRef = await db.collection("users").doc(userId).get();
     let userProfileData = userProfileRef.data();
-    userProfileData.id = userId
+    userProfileData.id = userId;
+
+  
+
+    const token = await auth.createCustomToken(userId);
 
     // Return the access token and user profile data
     // const accessToken = signInResult.user.getIdToken();
@@ -68,6 +76,16 @@ async function authenticateUser(email, password) {
     };
   } catch (error) {
     console.error("Error authenticating user: ", error);
+    if (error.code === "auth/user-not-found") {
+      return {
+        error: "User not found",
+      };
+    }
+    if (error.code === "auth/invalid-emai") {
+      return {
+        error: error.message,
+      };
+    }
     return null;
   }
 }
