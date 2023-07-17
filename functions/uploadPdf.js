@@ -18,9 +18,9 @@ async function uploadSignedPdf(pdfBuffer, filePath) {
   await uploadBytes(fileRef, pdfBuffer, metadata);
   const url = await getDownloadURL(fileRef);
 
+  console.log(`Signed PDF uploaded to ${filePath}`);
   return url;
 
-  console.log(`Signed PDF uploaded to ${filePath}`);
 }
 
 module.exports = { uploadSignedPdf };

@@ -15,6 +15,11 @@ const auth = admin.auth();
 // Create a Firestore instance
 const db = admin.firestore();
 
+// create a firebase storage instance
+const storage = admin.storage();
+
+const bucketName = "t-scripty.appspot.com";
+
 // Define utility functions for authentication, registration, and login
 
 // Register a new user with the specified email, password, and profile data
@@ -55,16 +60,14 @@ async function authenticateUser(email, password) {
     const signInResult = await auth.getUserByEmail(email);
     const userId = signInResult.uid;
 
-    console.log(signInResult);
-    console.log(userId)
+    // console.log(signInResult);
+    // console.log(userId)
     // const signInResult = await auth.signInWithCustomToken(token);
 
     // Get the user profile data from Firestore
     const userProfileRef = await db.collection("users").doc(userId).get();
     let userProfileData = userProfileRef.data();
     userProfileData.id = userId;
-
-  
 
     const token = await auth.createCustomToken(userId);
 
@@ -90,7 +93,7 @@ async function authenticateUser(email, password) {
   }
 }
 
-// Define utility functions for CRUD operations
+// =============================== Define utility functions for CRUD operations ========================================
 
 // Create a new document in the specified collection
 async function createDocument(collectionName, documentData) {
@@ -144,13 +147,51 @@ async function deleteDocument(collectionName, documentId) {
 // Define a middleware function to authenticate Firebase Authentication tokens
 async function authenticateToken(req, res, next) {
   try {
+    console.log(req.headers.authorization);
     const authToken = req.headers.authorization.split(" ")[1];
-    const decodedToken = await auth.verifyIdToken(authToken);
+    const decodedToken = await auth.signInWithCustomToken(authToken);
     req.user = decodedToken;
     next();
   } catch (error) {
     console.error("Error authenticating token: ", error);
     res.status(401).json({ error: "Unauthorized" });
+  }
+}
+
+async function uploadPdfToFirebase(pdfBuffer, fileName) {
+  const bucket = storage.bucket(bucketName);
+
+  const getbucketName = bucket.name;
+
+  console.log(`The default Firebase Storage bucket name is ${getbucketName}.`);
+  const file = bucket.file(fileName);
+
+  await file.save(pdfBuffer, {
+    metadata: { contentType: "application/pdf" },
+    public: true,
+    validation: "md5",
+  });
+
+  const [url] = await file.getSignedUrl({
+    action: "read",
+    expires: "03-17-2025", // Set the URL expiration date
+  });
+
+  return url;
+}
+
+async function getAllUsersByRole(role) {
+  try {
+    const usersRef = db.collection("users");
+    const snapshot = await usersRef.where("role", "==", role).get();
+    const users = [];
+    snapshot.forEach((doc) => {
+      users.push({ id: doc.id, ...doc.data() });
+    });
+    return users;
+  } catch (error) {
+    console.error("Failed to get all users by role:", error);
+    throw new Error("Failed to get all users by role");
   }
 }
 
@@ -163,4 +204,6 @@ module.exports = {
   updateDocument,
   deleteDocument,
   authenticateToken,
+  uploadPdfToFirebase,
+  getAllUsersByRole,
 };

@@ -1,5 +1,10 @@
 const express = require("express");
-const { registerUser, authenticateUser, authenticateToken } = require("../functions/firebase");
+const {
+  registerUser,
+  authenticateUser,
+  authenticateToken,
+  getAllUsersByRole,
+} = require("../functions/firebase");
 const router = express.Router();
 const bodyParser = require("body-parser");
 
@@ -11,8 +16,8 @@ router.post("/register", async (req, res) => {
   const { email, password, profileData } = req.body;
   const userId = await registerUser(email, password, profileData);
   if (userId) {
-    if(userId.error){
-      return res.status(400).json(userId)
+    if (userId.error) {
+      return res.status(400).json(userId);
     }
     res.status(201).json({ userId });
   } else {
@@ -25,8 +30,8 @@ router.post("/login", async (req, res) => {
   const { email, password } = req.body;
   const authResult = await authenticateUser(email, password);
   if (authResult) {
-    if(authResult.error){
-      return res.status(400).json(userId)
+    if (authResult.error) {
+      return res.status(400).json(userId);
     }
     res.status(200).json(authResult);
   } else {
@@ -37,11 +42,22 @@ router.post("/login", async (req, res) => {
 // Get user data
 router.get("/data/:userId", authenticateToken, async (req, res) => {
   const userId = req.params.userId;
-  const userProfileRef = await readDocument('users', userId);
+  const userProfileRef = await readDocument("users", userId);
   if (userProfileData) {
     res.status(200).json(userProfileData);
   } else {
     res.status(404).json({ error: "User not found" });
+  }
+});
+
+// Get all student users
+router.get("/students", async (req, res) => {
+  try {
+    const users = await getAllUsersByRole("student");
+    res.status(200).json(users);
+  } catch (error) {
+    console.error("Failed to fetch student users:", error);
+    res.status(500).json({ error: "Failed to fetch student users" });
   }
 });
 
