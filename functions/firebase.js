@@ -157,14 +157,21 @@ async function authenticateToken(req, res, next) {
     res.status(401).json({ error: "Unauthorized" });
   }
 }
-
+function buildDownloadUrl(filePath) {
+  const bucket = storage.bucket(bucketName);
+  const bucketUrl = `https://firebasestorage.googleapis.com/v0/b/${bucketName}`;
+  const fileUrl = `${bucketUrl}/o/${encodeURIComponent(filePath)}?alt=media`;
+  return fileUrl;
+}
 async function uploadPdfToFirebase(pdfBuffer, fileName) {
+  configureBucketCors().catch(console.error);
   const bucket = storage.bucket(bucketName);
 
   const getbucketName = bucket.name;
 
   console.log(`The default Firebase Storage bucket name is ${getbucketName}.`);
-  const file = bucket.file(fileName);
+
+  const file = bucket.file(`transcripts/${fileName}`);
 
   await file.save(pdfBuffer, {
     metadata: { contentType: "application/pdf" },
@@ -172,12 +179,33 @@ async function uploadPdfToFirebase(pdfBuffer, fileName) {
     validation: "md5",
   });
 
-  const [url] = await file.getSignedUrl({
-    action: "read",
-    expires: "03-17-2025", // Set the URL expiration date
-  });
+  // const [url] = await file.getSignedUrl({
+  //   action: "read",
+  //   expires: "03-17-2025", // Set the URL expiration date
+  // });
+
+  const url = buildDownloadUrl(`transcripts/${fileName}`);
 
   return url;
+}
+
+async function configureBucketCors() {
+  const origin = "http://localhost:3000";
+  const responseHeader = "Content-Type";
+  const maxAgeSeconds = 3600;
+  const method = "GET";
+  await storage.bucket(bucketName).setCorsConfiguration([
+    {
+      maxAgeSeconds,
+      method: [method],
+      origin: [origin],
+      responseHeader: [responseHeader],
+    },
+  ]);
+
+  console.log(`Bucket ${bucketName} was updated with a CORS config
+      to allow ${method} requests from ${origin} sharing 
+      ${responseHeader} responses across origins`);
 }
 
 async function getAllUsersByRole(role) {

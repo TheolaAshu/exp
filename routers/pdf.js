@@ -25,20 +25,17 @@ router.post("/sign", upload.single("pdfFile"), async (req, res) => {
     const pdfBuffer = req.file.buffer;
     const userId = req.body.user; // assuming the user ID is available in the request
 
-
     // Generate a digital signature using the private key
     const result = await generateSignature(pdfBuffer, userId);
 
     //code to convert signature to a hash using a hashing function
     const hash = convertToHash(result.signature);
 
-    const newBuffer = result.signedPdfBuffer
+    const newBuffer = result.signedPdfBuffer;
 
     const pdfDoc = await pdfLib.PDFDocument.load(newBuffer);
 
-
     pdfDoc.setSubject(hash);
-
 
     console.log(result);
 
@@ -75,11 +72,9 @@ router.post("/get-hash", upload.single("pdfFile"), async (req, res) => {
     // Extract the hash from the PDF metadata
     const hash = pdfDoc.getSubject();
 
-
     const result = await verifySignature(pdfBuffer, userId);
 
     console.log(result);
-
 
     res.send({ hash });
   } catch (error) {
